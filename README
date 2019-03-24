@@ -1,0 +1,107 @@
+
+What are these tools?
+
+They are demostration programs for the Null Session and MSRPC concepts
+discussed at BlackHat Windows 2000.
+
+What do they do and how do I use them?
+
+o rpcdump
+
+rpcdump dumps the contents of the endpoint mapper database.  It's
+similar to the old epdump.exe and newer rpcdump.exe from Microsoft's
+resource kit, but it adds the ability to query each registered RPC
+server for all the interfaces it supports via RpcMgmtInqIfIds, so it
+can report more that just the interfaces a server has registered.
+
+Usage:  rpcdump [-v] [-p protseq] target
+
+The -v option turns on the verbosity, and rpcdump will try to get all
+interfaces supported by each server.
+
+The -p option allows you to specify a particular protocol sequence to
+use for talking to the endpoint mapper.  If none is specified, rpcdump
+will try several of the more popular ones.
+
+Examples:
+
+[c:\rpctools] rpcdump 192.168.1.1
+
+dumps the endpoint map normally.
+
+[c:\rpctools] rpcdump -v 192.168.1.1
+
+dumps the endpoint map and tries to get the additional interface
+information.
+
+[c:\rpctools] rpcdump -v -p ncadg_ip_udp 192.168.1.1
+
+dumps the endpoint map via UDP and also tries to get the additional
+interface information.
+
+
+o ifids
+
+Ifids is just a small wrapper around the RpcMgmtInqIfIds call that is
+used by rpcdump above.  It's useful for looking at just one RPC server
+instead of all of them, and it lets you talk to RPC servers that are
+not registered in the endpoint map.
+
+Usage: ifids -p protseq -e endpoint target
+
+The -p option specifies which protocol sequence to use for talking to the
+server.
+
+The -e option specifies which endpoint within that protocol sequence
+to talk to.
+
+Examples:
+
+[c:\rpctools] ifids -p ncacn_ip_tcp -e 1029 192.168.1.1
+
+Talk to the RPC server listening on TCP port 1029.
+
+[c:\rpctools] ifids -p ncadg_ip_udp -e 1028
+
+Talk to the RPC server listening on UDP port 1028.
+
+
+o walksam
+
+walksam illustrates walking the SAM database and dumping out
+information about each user found.  It supports both the 'traditional'
+method of doing this via Named Pipes, but also supports the additional
+protseqs that are used by W2K's Domain Controllers.
+
+By default, walksam will use the named pipes approach, and so will use
+either your current credentials, or whatever credentials have been
+specified with a "net use \\target\ipc$ ..." command.  If an
+alternative protocol sequence is specified, then walksam will always
+attempt to use a null session.
+
+There seems to be a bug in later service packs of NT4 which cause
+walksam (or any RPC client) to always use your current credentials
+instead of a null session when you specify an alternate protocol
+sequence.  You can work around this by making your current credentials
+_be_ a null session.  Use your favorite method of launching a command
+prompt running under the SYSTEM context, and then run walksam from
+there.
+
+
+Examples:
+
+[c:\rpctools] walksam 192.168.1.1
+
+Walk the SAM using Named Pipes.
+
+[c:\rpctools] walksam -p ncacn_ip_tcp -e 1028 192.168.1.1
+
+Walk the SAM using TCP and talking to port 1028.  To determine the
+port, you would need to run rpcdump -v and look for the entry which
+contains the SAMR interface UUID, 12345778-1234-abcd-ef00-0123456789ac.
+
+[c:\rpctools] walksam -p ncacn_http -e 1029 192.168.1.1
+
+Walk the SAM using IIS as a proxy.  For this to work, the target must
+have installed and enabled COM Internet services.  Again, to determine
+the port, you'd need to check the output of rpcdump -v.
